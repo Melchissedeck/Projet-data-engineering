@@ -10,7 +10,7 @@ if engine is None:
 try:
     print("🚀 Début du processus de transformation, enrichissement et monitoring...")
 
-    with engine.connect() as connection:
+    with engine.begin() as connection:
 
         # === 1. Supprimer (optionnel) et recréer la table avec toutes les colonnes ===
         connection.execute(text("DROP TABLE IF EXISTS weather_clean;"))
