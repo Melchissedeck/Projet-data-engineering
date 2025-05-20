@@ -23,76 +23,41 @@ PostgreSQL installé localement (par défaut : user postgres, base postgres)
 Fichier CSV weatherHistory.csv dans le dossier ./data/
 
 📦 Installation des dépendances
+
 pip install pandas sqlalchemy psycopg2
 
 🚀 Exécution du pipeline
-Lance simplement le script d’orchestration :
+
 python orchestration.py
+
 Le mot de passe PostgreSQL est demandé via le terminal.
 
 # 📂 Structure du projet
 
-.
+
 ├── data/
+
 │   └── weatherHistory.csv
+
 ├── Scripts/
+
 │   └── orchestration.py
+
 ├── SQL/
+
 │   └── db_utils.py
+
 │   └── import_csv.py
+
 │   └── orchestration.py
+
 └── README.md
 
 # 🧩 SCHÉMA RELATIONNEL DE LA BASE DE DONNÉES
 
--- Table source
-weather_data (
-    "Formatted Date", "Summary", "Precip Type",
-    "Temperature (C)", "Apparent Temperature (C)",
-    "Humidity", "Wind Speed (km/h)", "Wind Bearing (degrees)",
-    "Visibility (km)", "Loud Cover", "Pressure (millibars)",
-    "Daily Summary"
-)
+![image](https://github.com/user-attachments/assets/47df5e05-d38a-468a-bbe8-c36d5d15e21c)
 
--- Table transformée
-weather_clean (
-    id SERIAL PRIMARY KEY,
-    formatted_date TIMESTAMP,
-    summary TEXT,
-    precip_type TEXT,
-    temperature_c FLOAT,
-    temperature_f FLOAT,
-    apparent_temperature_c FLOAT,
-    humidity FLOAT,
-    humidity_level TEXT,
-    wind_speed_kph FLOAT,
-    wind_bearing_deg INTEGER,
-    visibility_km FLOAT,
-    is_foggy BOOLEAN,
-    cloud_cover FLOAT,
-    pressure_mb FLOAT,
-    daily_summary TEXT,
-    temperature_category TEXT,
-    is_rainy BOOLEAN,
-    is_snowy BOOLEAN
-)
 
--- Table de log
-weather_log (
-    id SERIAL PRIMARY KEY,
-    timestamp TIMESTAMP,
-    message TEXT,
-    row_count INTEGER
-)
-
--- Vue matérialisée (résumé quotidien)
-weather_daily_summary (
-    day DATE,
-    avg_temp_c NUMERIC,
-    avg_humidity NUMERIC,
-    avg_wind_kph NUMERIC,
-    observations INTEGER
-)
 # 🔄 SCHÉMA DU PIPELINE
 
                 +---------------------+
@@ -117,9 +82,13 @@ weather_daily_summary (
                 +----------------------+
                 | Base PostgreSQL      |
                 | Tables :             |
-                | - weather_clean      |
+                | - weather_data       |
+                | - weather_clean      | 
+                | - fact_weather       | 
+                | - dim_conditions     | 
+                | - dim_date           | 
+                | - dim_weather_type   | 
                 | - weather_log        |
-                | - weather_daily_summary (VIEW)
                 +----------------------+
 
                           ▲
