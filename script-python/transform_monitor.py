@@ -2,7 +2,7 @@ from db_utils import connect_to_postgres
 from sqlalchemy import text
 from datetime import datetime
 
-# Connexion avec SQLAlchemy engine
+# Connexion via SQLAlchemy engine
 engine = connect_to_postgres()
 if engine is None:
     exit()
@@ -12,7 +12,7 @@ try:
 
     with engine.begin() as connection:
 
-        # === 1. Supprimer (optionnel) et recréer la table avec toutes les colonnes ===
+        # === 1. Supprimer et recréer la table weather_clean avec toutes les colonnes ===
         connection.execute(text("DROP TABLE IF EXISTS weather_clean;"))
 
         connection.execute(text("""
@@ -33,7 +33,7 @@ try:
             );
         """))
 
-        # === 2. Insertion sans doublons depuis weather_data ===
+        # === 2. Insérer les données depuis weather_data ===
         connection.execute(text("""
             INSERT INTO weather_clean (
                 formatted_date, summary, precip_type, temperature_c,
@@ -59,7 +59,7 @@ try:
               AND "Humidity" IS NOT NULL;
         """))
 
-        # === 3. Historisation ===
+        # === 3. Créer (si nécessaire) la table de log ===
         connection.execute(text("""
             CREATE TABLE IF NOT EXISTS weather_log (
                 id SERIAL PRIMARY KEY,
@@ -69,6 +69,7 @@ try:
             );
         """))
 
+        # === 4. Ajouter une entrée dans le log ===
         result = connection.execute(text("SELECT COUNT(*) FROM weather_clean;"))
         row_count = result.scalar()
 
@@ -80,7 +81,7 @@ try:
             "count": row_count
         })
 
-        # === 4. Vue matérialisée : résumé météo par jour ===
+        # === 5. Créer la vue matérialisée pour résumé journalier ===
         connection.execute(text("""
             CREATE MATERIALIZED VIEW IF NOT EXISTS weather_daily_summary AS
             SELECT 
@@ -94,10 +95,10 @@ try:
             ORDER BY day;
         """))
 
-        # === 5. Mise à jour de la vue matérialisée ===
+        # === 6. Rafraîchir la vue à chaque exécution ===
         connection.execute(text("REFRESH MATERIALIZED VIEW weather_daily_summary;"))
 
-        # === 6. Monitoring ===
+        # === 7. Monitoring console ===
         result = connection.execute(text("SELECT MAX(formatted_date) FROM weather_clean;"))
         latest_time = result.scalar()
 
