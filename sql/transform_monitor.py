@@ -126,5 +126,123 @@ try:
         print(f"📊 Dernière donnée insérée : {latest_time}")
         print(f"📈 Total de lignes dans `weather_clean` : {row_count}")
 
+        # === 8. Création des tables du modèle en étoile ===
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS dim_date (
+                date_id SERIAL PRIMARY KEY,
+                full_date DATE UNIQUE,
+                year INT,
+                month INT,
+                day INT,
+                weekday TEXT
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS dim_weather_type (
+                weather_type_id SERIAL PRIMARY KEY,
+                summary TEXT,
+                precip_type TEXT,
+                is_rainy BOOLEAN,
+                is_snowy BOOLEAN,
+                daily_summary TEXT,
+                UNIQUE(summary, precip_type, is_rainy, is_snowy, daily_summary)
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS dim_conditions (
+                condition_id SERIAL PRIMARY KEY,
+                humidity_level TEXT,
+                temperature_category TEXT,
+                is_foggy BOOLEAN,
+                UNIQUE(humidity_level, temperature_category, is_foggy)
+            );
+        """))
+
+        connection.execute(text("""
+            CREATE TABLE IF NOT EXISTS fact_weather (
+                fact_id SERIAL PRIMARY KEY,
+                formatted_date TIMESTAMP,
+                date_id INT REFERENCES dim_date(date_id),
+                weather_type_id INT REFERENCES dim_weather_type(weather_type_id),
+                condition_id INT REFERENCES dim_conditions(condition_id),
+                temperature_c FLOAT,
+                temperature_f FLOAT,
+                apparent_temperature_c FLOAT,
+                humidity FLOAT,
+                wind_speed_kph FLOAT,
+                wind_bearing_deg INT,
+                visibility_km FLOAT,
+                cloud_cover FLOAT,
+                pressure_mb FLOAT
+            );
+        """))
+
+        # === 9. Peuplement des dimensions ===
+        connection.execute(text("""
+            INSERT INTO dim_date (full_date, year, month, day, weekday)
+            SELECT DISTINCT 
+                DATE(formatted_date),
+                EXTRACT(YEAR FROM formatted_date)::INT,
+                EXTRACT(MONTH FROM formatted_date)::INT,
+                EXTRACT(DAY FROM formatted_date)::INT,
+                TO_CHAR(formatted_date, 'Day')
+            FROM weather_clean
+            ON CONFLICT (full_date) DO NOTHING;
+        """))
+
+        connection.execute(text("""
+            INSERT INTO dim_weather_type (summary, precip_type, is_rainy, is_snowy, daily_summary)
+            SELECT DISTINCT summary, precip_type, is_rainy, is_snowy, daily_summary
+            FROM weather_clean
+            ON CONFLICT DO NOTHING;
+        """))
+
+        connection.execute(text("""
+            INSERT INTO dim_conditions (humidity_level, temperature_category, is_foggy)
+            SELECT DISTINCT humidity_level, temperature_category, is_foggy
+            FROM weather_clean
+            ON CONFLICT DO NOTHING;
+        """))
+
+        # === 10. Peuplement de la table de faits ===
+        connection.execute(text("""
+            INSERT INTO fact_weather (
+                formatted_date, date_id, weather_type_id, condition_id,
+                temperature_c, temperature_f, apparent_temperature_c,
+                humidity, wind_speed_kph, wind_bearing_deg,
+                visibility_km, cloud_cover, pressure_mb
+            )
+            SELECT 
+                wc.formatted_date,
+                dd.date_id,
+                wt.weather_type_id,
+                cond.condition_id,
+                wc.temperature_c,
+                wc.temperature_f,
+                wc.apparent_temperature_c,
+                wc.humidity,
+                wc.wind_speed_kph,
+                wc.wind_bearing_deg,
+                wc.visibility_km,
+                wc.cloud_cover,
+                wc.pressure_mb
+            FROM weather_clean wc
+            JOIN dim_date dd ON DATE(wc.formatted_date) = dd.full_date
+            JOIN dim_weather_type wt ON
+                wc.summary = wt.summary AND
+                wc.precip_type IS NOT DISTINCT FROM wt.precip_type AND
+                wc.is_rainy = wt.is_rainy AND
+                wc.is_snowy = wt.is_snowy AND
+                wc.daily_summary = wt.daily_summary
+            JOIN dim_conditions cond ON
+                wc.humidity_level = cond.humidity_level AND
+                wc.temperature_category = cond.temperature_category AND
+                wc.is_foggy = cond.is_foggy;
+        """))
+
+        print("🌟 Modèle en étoile mis à jour avec succès.")
+
 except Exception as e:
     print(f"❌ Une erreur s’est produite : {e}")
