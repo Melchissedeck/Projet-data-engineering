@@ -39,6 +39,10 @@ Le mot de passe PostgreSQL est demandé via le terminal.
 
 │   └── weatherHistory.csv
 
+├── docs/
+
+│   └── Projet-Data-Engineering-Pipeline-ELT.pdf
+
 ├── Scripts/
 
 │   └── orchestration.py
