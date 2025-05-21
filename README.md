@@ -73,9 +73,8 @@ Le mot de passe PostgreSQL est demandé via le terminal.
                            v
                 +----------+----------+
                 | transform_monitor.py|
-                | - Clean & enrich    |
-                | - Historise         |
-                | - Vue matérialisée |
+                | - Nettoyer, enrichir|
+                | - Transformer       |
                 +----------+----------+
                            |
                            v
